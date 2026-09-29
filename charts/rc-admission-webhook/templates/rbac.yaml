@@ -1,0 +1,22 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "rc-admission-webhook.fullname" . }}-manager-role
+  labels:
+    {{- include "rc-admission-webhook.labels" . | nindent 4 }}
+rules: []
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "rc-admission-webhook.fullname" . }}-manager-rolebinding
+  labels:
+    {{- include "rc-admission-webhook.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "rc-admission-webhook.fullname" . }}-manager-role
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "rc-admission-webhook.fullname" . }}
+    namespace: {{ .Release.Namespace }}

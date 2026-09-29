@@ -1,0 +1,15 @@
+apiVersion: v2
+name: rc-admission-webhook
+description: Validating admission webhook for RuntimeConditionsProfile custom resources
+type: application
+version: 0.1.0
+appVersion: v1alpha1
+home: https://runtimeconditions.io
+sources:
+  - https://github.com/runtimeconditions/rc-admission-webhook
+
+dependencies:
+  - name: cert-manager
+    version: "v1.16.2"
+    repository: "https://charts.jetstack.io"
+    condition: certManager.installDependency

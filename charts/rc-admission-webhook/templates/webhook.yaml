@@ -1,0 +1,29 @@
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: {{ include "rc-admission-webhook.fullname" . }}-validating-webhook-configuration
+  annotations:
+    cert-manager.io/inject-ca-from: {{ .Release.Namespace }}/{{ include "rc-admission-webhook.fullname" . }}-serving-cert
+  labels:
+    {{- include "rc-admission-webhook.labels" . | nindent 4 }}
+webhooks:
+  - admissionReviewVersions:
+      - v1
+    clientConfig:
+      service:
+        name: {{ include "rc-admission-webhook.serviceName" . }}
+        namespace: {{ .Release.Namespace }}
+        path: /validate-runtimeconditions-io-v1alpha1-runtimeconditionsprofile
+    failurePolicy: Fail
+    name: vruntimeconditionsprofile-v1alpha1.kb.io
+    rules:
+      - apiGroups:
+          - runtimeconditions.io
+        apiVersions:
+          - v1alpha1
+        operations:
+          - CREATE
+          - UPDATE
+        resources:
+          - runtimeconditionsprofiles
+    sideEffects: None
