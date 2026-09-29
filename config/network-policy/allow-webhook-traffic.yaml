@@ -8,7 +8,7 @@ metadata:
     app.kubernetes.io/name: rc-admission-webhook
     app.kubernetes.io/managed-by: kustomize
   name: allow-webhook-traffic
-  namespace: system
+  namespace: runtime-conditions-system
 spec:
   podSelector:
     matchLabels:

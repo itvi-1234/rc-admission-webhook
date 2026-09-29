@@ -9,7 +9,7 @@ webhooks:
   clientConfig:
     service:
       name: webhook-service
-      namespace: system
+      namespace: runtime-conditions-system
       path: /validate-runtimeconditions-io-v1alpha1-runtimeconditionsprofile
   failurePolicy: Fail
   name: vruntimeconditionsprofile-v1alpha1.kb.io
