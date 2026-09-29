@@ -1,0 +1,27 @@
+{{- if .Values.certManager.selfSigned | default true }}
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: {{ include "rc-admission-webhook.fullname" . }}-selfsigned-issuer
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "rc-admission-webhook.labels" . | nindent 4 }}
+spec:
+  selfSigned: {}
+---
+{{- end }}
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ include "rc-admission-webhook.fullname" . }}-serving-cert
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "rc-admission-webhook.labels" . | nindent 4 }}
+spec:
+  dnsNames:
+    - {{ include "rc-admission-webhook.serviceName" . }}.{{ .Release.Namespace }}.svc
+    - {{ include "rc-admission-webhook.serviceName" . }}.{{ .Release.Namespace }}.svc.cluster.local
+  issuerRef:
+    kind: Issuer
+    name: {{ include "rc-admission-webhook.fullname" . }}-selfsigned-issuer
+  secretName: {{ include "rc-admission-webhook.fullname" . }}-webhook-server-cert

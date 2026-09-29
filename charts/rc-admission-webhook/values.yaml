@@ -1,0 +1,37 @@
+image:
+  repository: ghcr.io/runtimeconditions/rc-admission-webhook
+  tag: latest
+  pullPolicy: IfNotPresent
+
+replicas: 1
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 128Mi
+  requests:
+    cpu: 10m
+    memory: 64Mi
+
+# certManager controls how the webhook gets a trusted TLS certificate.
+# Kubernetes only calls admission webhooks over HTTPS, so one of these two
+# has to be true.
+certManager:
+  # Set to true to pull in cert-manager as a chart dependency (see
+  # Chart.yaml) if it isn't already installed in the cluster. Leave this
+  # false, and installDependency false, if your cluster already runs
+  # cert-manager - it'll be reused automatically either way, since the
+  # Issuer/Certificate below just talk to whatever cert-manager is running.
+  installDependency: false
+  # Uses a self-signed Issuer scoped to this release. Set to false if you
+  # want to point the Certificate at your own Issuer/ClusterIssuer instead
+  # (edit issuerRef in templates/certmanager.yaml).
+  selfSigned: true
+
+# networkPolicy restricts which namespaces can reach the webhook. Only
+# namespaces labeled `webhook: enabled` are allowed through.
+networkPolicy:
+  enabled: true
+
+cert-manager:
+  installCRDs: true
