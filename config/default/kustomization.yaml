@@ -1,5 +1,6 @@
-# Adds namespace to all resources.
-namespace: rc-admission-webhook-system
+# No fixed namespace here - whoever deploys this picks the target
+# namespace, e.g. `kubectl apply -k config/default -n <your-namespace>`,
+# or their own overlay with a `namespace:` field.
 
 # Value of this field is prepended to the
 # names of all resources, e.g. a deployment named
