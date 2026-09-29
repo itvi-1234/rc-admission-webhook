@@ -78,20 +78,27 @@ func (v *RuntimeConditionsProfileValidator) Handle(ctx context.Context, req admi
 		return admission.Denied(fmt.Sprintf("merging extensions: %v", err))
 	}
 
-	var problems []string
+	var problems, warnings []string
 	for _, condition := range profile.Conditions {
-		if msg := validateCondition(catalog, condition); msg != "" {
-			problems = append(problems, msg)
+		problem, warning := validateCondition(catalog, condition)
+		if problem != "" {
+			problems = append(problems, problem)
+		}
+		if warning != "" {
+			warnings = append(warnings, warning)
 		}
 	}
 
 	if len(problems) > 0 {
-		return admission.Denied(strings.Join(problems, "; "))
+		return admission.Denied(strings.Join(problems, "; ")).WithWarnings(warnings...)
 	}
-	return admission.Allowed("")
+	return admission.Allowed("").WithWarnings(warnings...)
 }
 
-func validateCondition(catalog *resolver.Catalog, condition map[string]any) string {
+// validateCondition returns a denial message when the condition is
+// invalid, or a warning when it's valid but its kind was ambiguous and
+// resolved by fallback rather than an explicit extension field.
+func validateCondition(catalog *resolver.Catalog, condition map[string]any) (problem, warning string) {
 	kind, _ := condition["kind"].(string)
 	label := kind
 	if name, _ := condition["name"].(string); name != "" {
@@ -99,23 +106,26 @@ func validateCondition(catalog *resolver.Catalog, condition map[string]any) stri
 	}
 
 	if !catalog.IsValidKind(kind) {
-		return fmt.Sprintf("condition %s: unknown kind %q", label, kind)
+		return fmt.Sprintf("condition %s: unknown kind %q", label, kind), ""
 	}
 
 	iface, _ := condition["interface"].(map[string]any)
 	interfaceType, _ := iface["type"].(string)
 	if !catalog.IsValidInterfaceType(kind, interfaceType) {
-		return fmt.Sprintf("condition %s: unknown interface type %q for kind %q", label, interfaceType, kind)
+		return fmt.Sprintf("condition %s: unknown interface type %q for kind %q", label, interfaceType, kind), ""
 	}
 
 	result, err := catalog.ValidateCondition(condition)
 	if err != nil {
-		return fmt.Sprintf("condition %s: %v", label, err)
+		return fmt.Sprintf("condition %s: %v", label, err), ""
 	}
 	if !result.Valid {
-		return fmt.Sprintf("condition %s: %s", label, strings.Join(result.Errors, "; "))
+		return fmt.Sprintf("condition %s: %s", label, strings.Join(result.Errors, "; ")), ""
 	}
-	return ""
+	if result.KindMatch == resolver.KindMatchFallback {
+		return "", fmt.Sprintf("condition %s: kind %q is defined by more than one extension; resolved to %q by fallback order. Set 'extension' to pin it explicitly.", label, kind, result.ResolvedExtension)
+	}
+	return "", ""
 }
 
 // resolveAll resolves every root in rootURIs and combines them into one

@@ -302,7 +302,7 @@ spec:
 	}
 }
 
-func TestHandle_DeniesConflictingIndependentExtensions(t *testing.T) {
+func TestHandle_AllowsAmbiguousKindViaExplicitExtension(t *testing.T) {
 	otherWidgetURI := "mem://other-widget.extension.yaml"
 	loader := resolver.NewInMemoryLoader(map[string][]byte{
 		widgetExtensionURI: widgetExtensionDoc,
@@ -316,13 +316,63 @@ spec:
 	v := &RuntimeConditionsProfileValidator{Loader: loader}
 	req := newAdmissionRequest(t, `{
 		"extensions": ["`+widgetExtensionURI+`", "`+otherWidgetURI+`"],
-		"conditions": []
+		"conditions": [
+			{"name": "primary", "kind": "widget", "extension": "`+widgetExtensionURI+`", "interface": {"type": "http", "uri": "https://example.com"}}
+		]
+	}`)
+
+	resp := v.Handle(context.Background(), req)
+
+	if !resp.Allowed {
+		t.Fatalf("expected allowed: two extensions may both declare kind \"widget\", got denied: %s", resp.Result.Message)
+	}
+	if len(resp.Warnings) != 0 {
+		t.Fatalf("expected no warnings when extension is given explicitly, got %v", resp.Warnings)
+	}
+}
+
+func TestHandle_AllowsAmbiguousKindViaFallbackWithWarning(t *testing.T) {
+	otherWidgetURI := "mem://other-widget.extension.yaml"
+	loader := resolver.NewInMemoryLoader(map[string][]byte{
+		widgetExtensionURI: widgetExtensionDoc,
+		otherWidgetURI: []byte(`
+metadata: {id: ` + otherWidgetURI + `}
+spec:
+  kinds:
+    - name: widget
+`),
+	})
+	v := &RuntimeConditionsProfileValidator{Loader: loader}
+	req := newAdmissionRequest(t, `{
+		"extensions": ["`+widgetExtensionURI+`", "`+otherWidgetURI+`"],
+		"conditions": [
+			{"name": "primary", "kind": "widget", "interface": {"type": "http", "uri": "https://example.com"}}
+		]
+	}`)
+
+	resp := v.Handle(context.Background(), req)
+
+	if !resp.Allowed {
+		t.Fatalf("expected allowed: no extension field should fall back to the first-resolved owner, got denied: %s", resp.Result.Message)
+	}
+	if len(resp.Warnings) != 1 {
+		t.Fatalf("expected one warning about fallback resolution, got %v", resp.Warnings)
+	}
+}
+
+func TestHandle_DeniesConditionExtensionThatDoesNotDefineKind(t *testing.T) {
+	v := newTestValidator()
+	req := newAdmissionRequest(t, `{
+		"extensions": ["`+widgetExtensionURI+`"],
+		"conditions": [
+			{"name": "primary", "kind": "widget", "extension": "mem://not-a-resolved-extension.yaml", "interface": {"type": "http", "uri": "https://example.com"}}
+		]
 	}`)
 
 	resp := v.Handle(context.Background(), req)
 
 	if resp.Allowed {
-		t.Fatal("expected denied: two independent extensions both declare kind \"widget\"")
+		t.Fatal("expected denied: the named extension was never resolved for this profile")
 	}
 }
 
