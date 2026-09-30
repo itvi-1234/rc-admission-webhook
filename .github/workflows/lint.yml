@@ -23,12 +23,7 @@ jobs:
         with:
           go-version-file: go.mod
 
-      # golangci-lint has no release built with go1.27 yet (our go.mod's
-      # `go` version), so it refuses to run at all - not a real code
-      # problem. Remove continue-on-error once golangci-lint catches up.
       - name: Check linter configuration
         run: make lint-config
-        continue-on-error: true
       - name: Run linter
         run: make lint
-        continue-on-error: true
