@@ -24,6 +24,7 @@ helm install rc-admission-webhook charts/rc-admission-webhook \
 | Key | Description | Default |
 | --- | --- | --- |
 | `image.repository` / `image.tag` | Webhook image | `ghcr.io/runtimeconditions/rc-admission-webhook` / `latest` |
+| `image.pullPolicy` | Image pull policy | `IfNotPresent` |
 | `certManager.installDependency` | Install cert-manager as part of this release | `false` |
 | `certManager.selfSigned` | Use a self-signed Issuer scoped to this release | `true` |
 | `networkPolicy.enabled` | Restrict webhook ingress to namespaces labeled `webhook: enabled` | `true` |
