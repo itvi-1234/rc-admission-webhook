@@ -544,3 +544,38 @@ func TestHandle_AllowsFullIdsWithSharedDependency(t *testing.T) {
 		t.Fatalf("expected no warnings, got %v", resp.Warnings)
 	}
 }
+
+// The profile lists both extensions in the short <url>:<version> form, while
+// the second one depends on the first by its full file URL. That is one file
+// under two names, not two extensions that declare the same type.
+func TestHandle_AllowsShortFormExtensionsWithFullIdDependency(t *testing.T) {
+	const (
+		shortCore = "https://runtimeconditions.io/extensions/core:v1"
+		fullCore  = "https://runtimeconditions.io/extensions/core/v1/runtimeconditions.extension.yaml"
+		shortMore = "https://runtimeconditions.io/extensions/more:v1"
+		fullMore  = "https://runtimeconditions.io/extensions/more/v1/runtimeconditions.extension.yaml"
+	)
+	loader := resolver.NewInMemoryLoader(map[string][]byte{
+		fullCore: []byte("metadata: {id: " + fullCore + ", version: v1}\nspec:\n  kinds: [{name: widget}]\n  interfaceTypes: [{name: http, targetKind: widget}]\n" +
+			"  schemas:\n    - id: widget-http\n      appliesToKind: widget\n      appliesToInterfaceType: http\n      schema: {type: object}\n"),
+		fullMore: []byte("metadata: {id: " + fullMore + ", version: v1}\nspec:\n  dependencies: [" + fullCore + "]\n"),
+	})
+	v := &RuntimeConditionsProfileValidator{Loader: loader}
+	req := newAdmissionRequest(t, `{
+		"extensions": ["`+shortCore+`", "`+shortMore+`"],
+		"conditions": [
+			{"kind": "widget", "extension": "`+shortCore+`", "interface": {"type": "http"}},
+			{"kind": "widget", "extension": "`+fullCore+`", "interface": {"type": "http"}},
+			{"kind": "widget", "interface": {"type": "http"}}
+		]
+	}`)
+
+	resp := v.Handle(context.Background(), req)
+
+	if !resp.Allowed {
+		t.Fatalf("expected allowed, got denied: %s", resp.Result.Message)
+	}
+	if len(resp.Warnings) != 0 {
+		t.Fatalf("one file under two names is not an ambiguous kind, got warnings %v", resp.Warnings)
+	}
+}

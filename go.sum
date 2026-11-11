@@ -128,6 +128,8 @@ github.com/runtimeconditions/rc-extension-resolver v0.0.0-20260929185940-91c46bf
 github.com/runtimeconditions/rc-extension-resolver v0.0.0-20260929185940-91c46bf6bcc8/go.mod h1:JSJGMJW3MbTOccifXB5hXrM04AxOXM3nYFmqt4mOKZ8=
 github.com/runtimeconditions/rc-extension-resolver v0.0.0-20261111075749-96ad57d47508 h1:C1QlBnX9gXej6iknBNBOv9H2A8S9Gdub/m4FnX8sBgY=
 github.com/runtimeconditions/rc-extension-resolver v0.0.0-20261111075749-96ad57d47508/go.mod h1:JSJGMJW3MbTOccifXB5hXrM04AxOXM3nYFmqt4mOKZ8=
+github.com/runtimeconditions/rc-extension-resolver v0.0.0-20261111085732-90e913c3b2f2 h1:JDO6iIdMJqzgBJgBX+wc796qO/NQLKHxuCpuTh7EDBc=
+github.com/runtimeconditions/rc-extension-resolver v0.0.0-20261111085732-90e913c3b2f2/go.mod h1:JSJGMJW3MbTOccifXB5hXrM04AxOXM3nYFmqt4mOKZ8=
 github.com/runtimeconditions/runtime-conditions-crd v0.0.0-20260915085941-fc6753703f71 h1:dkBZM8azB1WfqkBrC/oV1pxYKinTlgn6FaumC4ugrV4=
 github.com/runtimeconditions/runtime-conditions-crd v0.0.0-20260915085941-fc6753703f71/go.mod h1:AHalaxEPiJ1zgd0nRDLb0BDdJbkrhYceZI5tdl3zB8M=
 github.com/spf13/pflag v1.0.10 h1:4EBh2KAYBwaONj6b2Ye1GiHfwjqyROoF4RwYO+vPwFk=
