@@ -470,3 +470,77 @@ func TestHandle_AllowsNoConditionsAtAll(t *testing.T) {
 		t.Fatalf("expected allowed: nothing to validate, got denied: %s", resp.Result.Message)
 	}
 }
+
+// A reference is not the same string as the definition's metadata.id. A
+// Condition pins its extension by the reference the profile declared.
+func TestHandle_AllowsConditionExtensionPinnedByReference(t *testing.T) {
+	const reference = "mem://widget-reference"
+	loader := resolver.NewInMemoryLoader(map[string][]byte{reference: widgetExtensionDoc})
+	v := &RuntimeConditionsProfileValidator{Loader: loader}
+	req := newAdmissionRequest(t, `{
+		"extensions": ["`+reference+`"],
+		"conditions": [
+			{"kind": "widget", "extension": "`+reference+`", "interface": {"type": "http", "uri": "https://example.com"}}
+		]
+	}`)
+
+	resp := v.Handle(context.Background(), req)
+
+	if !resp.Allowed {
+		t.Fatalf("expected allowed: the Condition names the declared reference, got denied: %s", resp.Result.Message)
+	}
+}
+
+// The short <url>:<version> form of an official extension, used as the
+// Condition's extension selector exactly as the profile spelled it.
+func TestHandle_AllowsConditionExtensionPinnedByShortOfficialReference(t *testing.T) {
+	const (
+		reference = "https://runtimeconditions.io/extensions/widget:v1"
+		location  = "https://runtimeconditions.io/extensions/widget/v1/runtimeconditions.extension.yaml"
+	)
+	doc := []byte(`metadata: {id: ` + location + `, version: v1}` + string(widgetExtensionDoc[len("\nmetadata:\n  id: "+widgetExtensionURI):]))
+	v := &RuntimeConditionsProfileValidator{Loader: resolver.NewInMemoryLoader(map[string][]byte{location: doc})}
+	req := newAdmissionRequest(t, `{
+		"extensions": ["`+reference+`"],
+		"conditions": [
+			{"kind": "widget", "extension": "`+reference+`", "interface": {"type": "http", "uri": "https://example.com"}}
+		]
+	}`)
+
+	resp := v.Handle(context.Background(), req)
+
+	if !resp.Allowed {
+		t.Fatalf("expected allowed: the Condition names the short reference from the profile, got denied: %s", resp.Result.Message)
+	}
+}
+
+// A profile that lists extensions by their full ids, where one extension also
+// depends on another that the profile lists itself.
+func TestHandle_AllowsFullIdsWithSharedDependency(t *testing.T) {
+	const (
+		base = "https://runtimeconditions.io/extensions/"
+		core = base + "core/v1/runtimeconditions.extension.yaml"
+		more = base + "more/v1/runtimeconditions.extension.yaml"
+	)
+	loader := resolver.NewInMemoryLoader(map[string][]byte{
+		core: []byte("metadata: {id: " + core + ", version: v1}\nspec:\n  kinds: [{name: widget}]\n  interfaceTypes: [{name: http, targetKind: widget}]\n" +
+			"  schemas:\n    - id: widget-http\n      appliesToKind: widget\n      appliesToInterfaceType: http\n      schema: {type: object}\n"),
+		more: []byte("metadata: {id: " + more + ", version: v1}\nspec:\n  dependencies: [" + core + "]\n"),
+	})
+	v := &RuntimeConditionsProfileValidator{Loader: loader}
+	req := newAdmissionRequest(t, `{
+		"extensions": ["`+core+`", "`+more+`"],
+		"conditions": [
+			{"kind": "widget", "extension": "`+core+`", "interface": {"type": "http"}}
+		]
+	}`)
+
+	resp := v.Handle(context.Background(), req)
+
+	if !resp.Allowed {
+		t.Fatalf("expected allowed, got denied: %s", resp.Result.Message)
+	}
+	if len(resp.Warnings) != 0 {
+		t.Fatalf("expected no warnings, got %v", resp.Warnings)
+	}
+}

@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"sort"
 	"strings"
 	"time"
 
@@ -129,14 +130,18 @@ func validateCondition(catalog *resolver.Catalog, condition map[string]any) (pro
 }
 
 // resolveAll resolves every extension a profile declares and combines
-// them into one graph, deduplicated by extension identifier. A profile
-// can declare several independent extensions, not just one dependency
-// tree - each entry in extensionURIs (the profile's `extensions` field)
-// is its own root, so this fans Resolver.Resolve out across all of them
-// before a single Merge.
+// them into one graph, keyed by the exact reference each one was reached by.
+// A profile can declare several independent extensions, not just one
+// dependency tree - each entry in extensionURIs (the profile's `extensions`
+// field) is its own root, so this fans Resolver.Resolve out across all of
+// them before a single Merge.
+//
+// The graph is keyed by reference rather than by metadata.id: a Condition's
+// `extension` selector must match the spelling the profile declared, and a
+// definition's metadata.id may spell it differently.
 func resolveAll(loader resolver.LoaderFunc, extensionURIs []string) (*resolver.ResolvedGraph, error) {
 	r := resolver.NewResolver(loader)
-	byID := make(map[string]*resolver.ExtensionDefinition)
+	byRef := make(map[string]*resolver.ExtensionDefinition)
 	var order []*resolver.ExtensionDefinition
 
 	for _, root := range extensionURIs {
@@ -144,14 +149,23 @@ func resolveAll(loader resolver.LoaderFunc, extensionURIs []string) (*resolver.R
 		if err != nil {
 			return nil, err
 		}
+		references := make(map[*resolver.ExtensionDefinition][]string, len(graph.ByID))
+		for reference, ext := range graph.ByID {
+			references[ext] = append(references[ext], reference)
+		}
+		// graph.Extensions is in dependency-first order; keep that order.
 		for _, ext := range graph.Extensions {
-			if _, ok := byID[ext.Metadata.ID]; ok {
-				continue
+			refs := references[ext]
+			sort.Strings(refs)
+			for _, reference := range refs {
+				if _, ok := byRef[reference]; ok {
+					continue
+				}
+				byRef[reference] = ext
+				order = append(order, ext)
 			}
-			byID[ext.Metadata.ID] = ext
-			order = append(order, ext)
 		}
 	}
 
-	return &resolver.ResolvedGraph{Extensions: order, ByID: byID}, nil
+	return &resolver.ResolvedGraph{Extensions: order, ByID: byRef}, nil
 }
